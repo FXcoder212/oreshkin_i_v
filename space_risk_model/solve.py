@@ -186,7 +186,7 @@ def q9(df):
 C_FN, C_FP = 20_000_000, 100_000
 
 
-def q10(df, step):
+def q10(df, step, triples=None):
     y = df.failure_in_12h.to_numpy().astype(np.int64)
     grp = df.orbit_type.to_numpy()
     preds = {i: df[m].to_numpy() for i, m in enumerate(MODELS, 1)}
@@ -201,7 +201,7 @@ def q10(df, step):
 
     best = None  # (loss, t, triple, weights)
     t0 = time.time()
-    for triple in itertools.combinations(range(1, 11), 3):
+    for triple in triples or itertools.combinations(range(1, 11), 3):
         pa, pb, pc = (preds[k] for k in triple)
         for w in weights:
             p = w[0] * pa + w[1] * pb + w[2] * pc
@@ -242,13 +242,16 @@ def main():
     ap.add_argument("csv", nargs="?", default=os.path.join(here, "space_risk_model.csv"))
     ap.add_argument("--q10-step", type=float, default=0.1)
     ap.add_argument("--only", type=str, default="")
+    ap.add_argument("--q10-triples", type=str, default="",
+                    help="restrict Q10 search, e.g. 7-9-10;5-9-10")
     args = ap.parse_args()
 
     df = pd.read_csv(args.csv)
     df = df.sort_values(["satellite_id", "orbit_number"], kind="stable").reset_index(drop=True)
     print("rows:", len(df), "failure rate:", df.failure_in_12h.mean())
 
-    funcs = [q1, q2, q3, q4, q5, q6, q7, q8, q9, lambda d: q10(d, args.q10_step)]
+    triples = [tuple(int(x) for x in t.split("-")) for t in args.q10_triples.split(";") if t]
+    funcs = [q1, q2, q3, q4, q5, q6, q7, q8, q9, lambda d: q10(d, args.q10_step, triples)]
     only = {int(x) for x in args.only.split(",") if x}
     rows = []
     for qi, f in enumerate(funcs, 1):
