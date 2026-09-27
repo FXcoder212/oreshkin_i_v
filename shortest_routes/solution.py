@@ -27,7 +27,10 @@ def main():
             elif nd == dist[j]:
                 cnt[j] = (cnt[j] + ci) % MOD
 
-    print(cnt[n - 1] if dist[n - 1] != INF else -1)
+    if dist[n - 1] == INF:
+        print(-1)
+    else:
+        print(dist[n - 1], cnt[n - 1])
 
 
 main()

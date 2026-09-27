@@ -24,6 +24,7 @@ int main() {
             else if (nd == dist[j]) { cnt[j] = (cnt[j] + cnt[i]) % MOD; }
         }
     }
-    printf("%lld\n", dist[n - 1] == INF ? -1LL : cnt[n - 1]);
+    if (dist[n - 1] == INF) printf("-1\n");
+    else printf("%d %lld\n", dist[n - 1], cnt[n - 1]);
     return 0;
 }
