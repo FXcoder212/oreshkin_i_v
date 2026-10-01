@@ -24,5 +24,11 @@ Only the Q10 line differs from submission_space_risk_model.csv. A correct one sc
 | try_18.csv | `10,"7,9,10",0.35,385300000` | weights step 0.25, threshold 0.01 grid |
 | try_19.csv | `10,"7,9,10",0.37,171800000` | weights step 0.005, any threshold |
 | try_20.csv | `10,"7,9,10",0.37,170200000` | weights step 0.002, any threshold |
+| try_21.csv | `10,"7,9,10",0.37,169800000` | continuous-weight optimum (fine search to 0.00002) |
+| try_22.csv | `10,"7,9,10",0.38,436700000` | weights proportional to ROC-AUC, any threshold |
+| try_23.csv | `10,"7,9,10",0.39,454200000` | weights proportional to ROC-AUC, threshold 0.01 grid |
+| try_24.csv | `10,"7,9,10",0.41,500800000` | weights proportional to PR-AUC, any threshold |
+| try_25.csv | `10,"7,9,10",0.41,533100000` | weights proportional to PR-AUC, threshold 0.01 grid |
 
 Already tried (wrong): 175500000/0.37, 181200000/0.37, 230100000/0.38, 217600000/0.37, 181900000/0.37.
+try_01..try_20 also tried (wrong).
