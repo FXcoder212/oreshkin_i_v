@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """Сборка мода Xa4lock.
 
-Берёт ростер из heroes.json, подставляет армянские имена в файлы локализации
-Deadlock (citadel_gc_hero_names_<язык>.txt) и пакует их в VPK для папки
-game/citadel/addons. Заодно обновляет ростер на сайте (../heroes.js).
+Берёт ростер из heroes.json, подставляет армянские имена героев и умений
+в файлы локализации Deadlock и пакует их в VPK для папки game/citadel/addons.
+Заодно обновляет ростер на сайте (../heroes.js).
 
-    python build.py                      # база: vendor/ (английский файл из игры)
+    python build.py                            # база: файлы в vendor/
     python build.py --game "C:/.../Deadlock"   # база: файлы из вашей установки игры
 
-Со своей установкой сборка подхватывает актуальные файлы после патча и
-настоящий русский файл, меняя в них только имена героев.
+Игра читает файл локализации целиком, поэтому в мод кладётся полная копия
+оригинала, в которой заменены только наши строки. Базовый файл ищется так:
+установка игры (--game) -> vendor/<файл>_<язык>.txt -> английский vendor-файл
+(последнее только для имён героев: там всё равно почти одни имена).
+Файл умений без своей русской базы не собирается, чтобы не потерять
+русские описания.
 """
 import argparse
 import hashlib
@@ -20,21 +24,25 @@ import zipfile
 import zlib
 from pathlib import Path
 
-VERSION = "0.1"
+VERSION = "0.2"
 ROOT = Path(__file__).resolve().parent
-LOC_DIR = "resource/localization/citadel_gc_hero_names"
+LOC_ROOT = "resource/localization"
 LANGS = {"english": "en", "russian": "ru"}  # язык игры -> поле в heroes.json
 PAK_NAME = "pak77_dir.vpk"
 
 
-def base_file(lang, game_dir):
-    """Исходный файл локализации: из установки игры, если есть, иначе vendor/."""
-    name = f"citadel_gc_hero_names_{lang}.txt"
+def base_file(stem, lang, game_dir, english_fallback):
+    """Исходный файл локализации (текст, откуда взят) или (None, None)."""
+    name = f"{stem}_{lang}.txt"
+    candidates = [ROOT / "vendor" / name]
     if game_dir:
-        p = Path(game_dir) / "game/citadel" / LOC_DIR / name
+        candidates.insert(0, Path(game_dir) / "game/citadel" / LOC_ROOT / stem / name)
+    for p in candidates:
         if p.exists():
             return p.read_text(encoding="utf-8-sig"), str(p)
-    p = ROOT / "vendor/citadel_gc_hero_names_english.txt"
+    if not english_fallback:
+        return None, None
+    p = ROOT / f"vendor/{stem}_english.txt"
     text = p.read_text(encoding="utf-8-sig")
     text = re.sub(r'("Language"\s+)"english"', rf'\1"{lang}"', text, count=1)
     return text, str(p)
@@ -61,7 +69,7 @@ def patch(text, tokens):
     return text
 
 
-def tokens_for(heroes, field, lang_base):
+def name_tokens(heroes, field, lang_base):
     out = {}
     for h in heroes:
         k, name = h["key"], h[field]
@@ -73,6 +81,12 @@ def tokens_for(heroes, field, lang_base):
     # _sort есть не у всех героев — дописываем только существующие
     return {t: v for t, v in out.items()
             if not t.endswith("_sort:n") or f'"{t}"' in lang_base}
+
+
+def ability_tokens(heroes, field, lang_base):
+    # дописывать отсутствующие умения не нужно: если ключа нет, умение убрали из игры
+    return {a["key"]: a[field] for h in heroes for a in h["abilities"]
+            if f'"{a["key"]}"' in lang_base}
 
 
 def write_vpk(path, files):
@@ -107,8 +121,10 @@ def write_vpk(path, files):
 
 
 def write_site_roster(heroes):
-    keep = ("orig", "role", "glyph", "bio", "ult")
-    rows = [{"name": h["ru"], **{k: h[k] for k in keep}} for h in heroes]
+    rows = [{"name": h["ru"], "orig": h["orig"], "role": h["role"], "glyph": h["glyph"],
+             "bio": h["bio"], "soon": h.get("soon", False),
+             "abilities": [[a["ru"], a["orig"]] for a in h["abilities"]]}
+            for h in heroes]
     js = ("// Сгенерировано mod/build.py из mod/heroes.json — правьте JSON.\n"
           "const HEROES = " + json.dumps(rows, ensure_ascii=False, indent=1) + ";\n")
     (ROOT.parent / "heroes.js").write_text(js, encoding="utf-8")
@@ -123,15 +139,22 @@ def main():
     out = ROOT / "build"
     files = {}
     for lang, field in LANGS.items():
-        text, src = base_file(lang, args.game)
-        res = patch(text, tokens_for(heroes, field, text))
-        rel = f"{LOC_DIR}/citadel_gc_hero_names_{lang}.txt"
-        data = ("\ufeff" + res).encode("utf-8")
-        files[rel] = data
-        loose = out / "addons" / rel
-        loose.parent.mkdir(parents=True, exist_ok=True)
-        loose.write_bytes(data)
-        print(f"{lang}: {src}")
+        for stem, tokens_fn, fallback in (
+            ("citadel_gc_hero_names", name_tokens, True),
+            ("citadel_heroes", ability_tokens, False),
+        ):
+            text, src = base_file(stem, lang, args.game, fallback)
+            if text is None:
+                print(f"{lang}/{stem}: нет базового файла, пропущено")
+                continue
+            res = patch(text, tokens_fn(heroes, field, text))
+            rel = f"{LOC_ROOT}/{stem}/{stem}_{lang}.txt"
+            data = ("\ufeff" + res).encode("utf-8")
+            files[rel] = data
+            loose = out / "addons" / rel
+            loose.parent.mkdir(parents=True, exist_ok=True)
+            loose.write_bytes(data)
+            print(f"{lang}/{stem}: {src}")
 
     pak = out / PAK_NAME
     write_vpk(pak, files)
@@ -143,7 +166,8 @@ def main():
     dl.mkdir(exist_ok=True)
     (dl / zpath.name).write_bytes(zpath.read_bytes())
     write_site_roster(heroes)
-    print(f"{len(heroes)} героев -> {pak.relative_to(ROOT)}, {zpath.relative_to(ROOT)}")
+    n_ab = sum(len(h["abilities"]) for h in heroes)
+    print(f"{len(heroes)} героев, {n_ab} умений -> {pak.relative_to(ROOT)}, {zpath.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

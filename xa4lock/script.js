@@ -1,5 +1,5 @@
 // Ссылка на файл мода (собирается mod/build.py). Пусто — кнопка показывает «скоро».
-const DOWNLOAD_URL = "downloads/Xa4lock-0.1.zip";
+const DOWNLOAD_URL = "downloads/Xa4lock-0.2.zip";
 
 const grid = document.getElementById("grid");
 const filters = document.getElementById("filters");
@@ -18,8 +18,11 @@ function card(h, i) {
       <p class="orig">вместо ${h.orig}</p>
       <h3>${h.name}</h3>
       <span class="role">${h.role}</span>
+      ${h.soon ? '<span class="role soon">скоро в игре</span>' : ""}
       <p>${h.bio}</p>
-      <p class="ult"><b>Ульта:</b> ${h.ult}</p>
+      ${h.abilities.length ? `<ol class="abilities">${h.abilities.map(([ru, orig], k) =>
+        `<li${k === 3 ? ' class="ult"' : ""} title="${orig}">${ru}</li>`).join("")}</ol>` :
+        '<p class="note">Умения появятся после выхода героя.</p>'}
     </div>`;
   return el;
 }
