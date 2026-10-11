@@ -24,7 +24,7 @@ import zipfile
 import zlib
 from pathlib import Path
 
-VERSION = "0.3"
+VERSION = "0.4"
 ROOT = Path(__file__).resolve().parent
 LOC_ROOT = "resource/localization"
 LANGS = {"english": "en", "russian": "ru"}  # язык игры -> поле в heroes.json
@@ -58,7 +58,7 @@ def patch(text, tokens):
     токены дописываются в конец блока Tokens."""
     missing = {t: v for t, v in tokens.items() if isinstance(v, str)}
     for tok, val in tokens.items():
-        pat = re.compile(rf'^(\s*"{re.escape(tok)}"\s+)"((?:[^"\\]|\\.)*)"', re.M)
+        pat = re.compile(rf'^(\s*"{re.escape(tok)}"\s*)"((?:[^"\\]|\\.)*)"', re.M)
         new = (lambda m: f'{m.group(1)}"{esc(val)}"') if isinstance(val, str) else \
               (lambda m, f=val: f'{m.group(1)}"{f(m.group(2))}"')
         text, n = pat.subn(new, text)
@@ -90,7 +90,8 @@ def name_tokens(heroes, field, lang_base):
 # Части оригинальных имён, которые встречаются в текстах сами по себе
 EXTRA_EN_FORMS = {"hero_orion": {"Talon": "Talonyan"}, "hero_ghost": {"Geist": "Gayane"},
                   "hero_krill": {"Krill": "Krikor"}}
-FLAVOR = '<span class="diminish">{}</span><br>'
+DESCRIPTIONS = json.loads((ROOT / "descriptions.json").read_text(encoding="utf-8"))
+ITEMS = json.loads((ROOT / "items.json").read_text(encoding="utf-8"))
 
 
 def renamer(forms):
@@ -105,7 +106,7 @@ def renamer(forms):
 def hero_tokens(heroes, field, lang_base):
     """Биографии, названия и описания умений, имена в текстах о герое."""
     known = (ROOT / "vendor/citadel_heroes_english.txt").read_text(encoding="utf-8-sig")
-    keys = re.findall(r'^\s*"([^"]+)"\s+"', lang_base, re.M)
+    keys = re.findall(r'^\s*"([^"]+)"\s*"', lang_base, re.M)
     out = {}
 
     def add(tok, val, insert=False):
@@ -127,13 +128,21 @@ def hero_tokens(heroes, field, lang_base):
                     out[tok] = rename
         for a in h["abilities"]:
             add(a["key"], a[field], insert=True)
-            flavor = a[f"flavor_{field}"]
-            if f'"{a["key"]}_quip"' in lang_base:
-                out[f'{a["key"]}_quip'] = flavor
-            elif f'"{a["key"]}_desc"' in lang_base:
-                prev = out.get(f'{a["key"]}_desc') or (lambda raw: raw)
-                out[f'{a["key"]}_desc'] = \
-                    lambda raw, p=prev, f=flavor: esc(FLAVOR.format(f)) + p(raw)
+            add(f'{a["key"]}_quip', a[f"flavor_{field}"])
+    # описания умений, переписанные целиком (механика и подстановки те же)
+    for tok, texts in DESCRIPTIONS.items():
+        add(tok, texts[field], insert=True)
+    return out
+
+
+def item_tokens(heroes, field, lang_base):
+    """Названия предметов; в поиске остаётся и старое название."""
+    out = {}
+    for it in ITEMS:
+        k, name = it["key"], it[field]
+        if f'"{k}"' in lang_base:
+            out[k] = name
+            out[f"{k}_search"] = lambda raw, n=name: f"{esc(n)} {raw}"
     return out
 
 
@@ -190,6 +199,7 @@ def main():
         for stem, tokens_fn, fallback in (
             ("citadel_gc_hero_names", name_tokens, True),
             ("citadel_heroes", hero_tokens, False),
+            ("citadel_gc_mod_names", item_tokens, False),
         ):
             text, src = base_file(stem, lang, args.game, fallback)
             if text is None:
@@ -215,7 +225,8 @@ def main():
     (dl / zpath.name).write_bytes(zpath.read_bytes())
     write_site_roster(heroes)
     n_ab = sum(len(h["abilities"]) for h in heroes)
-    print(f"{len(heroes)} героев, {n_ab} умений -> {pak.relative_to(ROOT)}, {zpath.relative_to(ROOT)}")
+    print(f"{len(heroes)} героев, {n_ab} умений, {len(DESCRIPTIONS)} описаний, {len(ITEMS)} предметов"
+          f" -> {pak.relative_to(ROOT)}, {zpath.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
