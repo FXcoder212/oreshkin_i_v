@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Xa4lock — армянский мод для Deadlock</title>
+  <meta name="description" content="Xa4lock — фанатский мод для Deadlock, в котором все герои стали армянами. Скачать, установить и узнать ростер.">
+  <link rel="canonical" href="https://xa4lock.com/">
+  <meta property="og:title" content="Xa4lock — армянский мод для Deadlock">
+  <meta property="og:description" content="Все герои Deadlock — армяне. Новые имена, голоса, умения и Арарат на горизонте.">
+  <meta property="og:url" content="https://xa4lock.com/">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='33' fill='%23d90012'/><rect y='33' width='100' height='34' fill='%230033a0'/><rect y='67' width='100' height='33' fill='%23f2a800'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;600&family=Noto+Sans+Armenian:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="logo" href="#top">XA<span>4</span>LOCK</a>
+    <nav>
+      <a href="#about">О моде</a>
+      <a href="#heroes">Герои</a>
+      <a href="#install">Установка</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-small" href="#download">Скачать</a>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="ararat" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <p class="eyebrow">Фанатский мод для Deadlock</p>
+        <h1>XA<span>4</span>LOCK</h1>
+        <p class="lead">Все герои Deadlock стали армянами. Новые имена, новые истории, нарды в каждом матче и Арарат на горизонте.</p>
+        <div class="cta">
+          <a class="btn" href="#download">Скачать мод</a>
+          <a class="btn btn-ghost" href="#heroes">Смотреть героев</a>
+        </div>
+        <ul class="stats">
+          <li><b id="stat-heroes">22</b><span>армянских героя</span></li>
+          <li><b>100%</b><span>гостеприимства</span></li>
+          <li><b>∞</b><span>лаваша</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="about" class="section">
+      <h2>О моде</h2>
+      <div class="features">
+        <article>
+          <h3>Новые герои</h3>
+          <p>Каждый персонаж Deadlock заменён армянским двойником: своё имя, биография и переименованные умения.</p>
+        </article>
+        <article>
+          <h3>Атмосфера Еревана</h3>
+          <p>Цвета флага в интерфейсе, туф и абрикосы на карте, дудук в главном меню.</p>
+        </article>
+        <article>
+          <h3>Только визуал</h3>
+          <p>Мод меняет внешний вид, имена и звук. Баланс и механики игры остаются оригинальными, так что играть можно в обычных матчах.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="heroes" class="section">
+      <h2>Ростер</h2>
+      <p class="sub">Кто стал кем. Нажмите на роль, чтобы отфильтровать.</p>
+      <div class="filters" id="filters" role="toolbar" aria-label="Фильтр по роли"></div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section id="download" class="section download">
+      <h2>Скачать</h2>
+      <p class="sub">Версия <b>0.1</b> · ~350 МБ · Совместим с текущим патчем Deadlock</p>
+      <a class="btn btn-big" id="download-btn" href="#">Скачать Xa4lock</a>
+      <p class="note" id="download-note"></p>
+    </section>
+
+    <section id="install" class="section">
+      <h2>Установка</h2>
+      <ol class="steps">
+        <li><b>Скачайте</b> архив с мода и распакуйте его.</li>
+        <li><b>Откройте папку игры:</b> Steam → Deadlock → Управление → Просмотреть локальные файлы.</li>
+        <li><b>Скопируйте</b> файлы <code>.vpk</code> в <code>game/citadel/addons</code> (если папки нет — создайте её).</li>
+        <li><b>Проверьте</b> <code>game/citadel/gameinfo.gi</code>: в блоке <code>SearchPaths</code> должна быть строка <code>Game citadel/addons</code>.</li>
+        <li><b>Запустите</b> игру. Барев, ахпер!</li>
+      </ol>
+      <p class="note">Удобнее всего ставить через менеджер модов. Чтобы удалить мод, просто удалите его файлы из <code>addons</code>.</p>
+    </section>
+
+    <section id="faq" class="section">
+      <h2>FAQ</h2>
+      <details>
+        <summary>Забанят ли меня за мод?</summary>
+        <p>Мод меняет только клиентские ресурсы (модели, текстуры, звук, текст). Тем не менее, вы используете любые моды на свой риск.</p>
+      </details>
+      <details>
+        <summary>Мод сломался после обновления игры</summary>
+        <p>Valve часто обновляет Deadlock. Подождите новую версию Xa4lock или заново проверьте <code>gameinfo.gi</code> — патчи иногда его перезаписывают.</p>
+      </details>
+      <details>
+        <summary>Видят ли другие игроки мои скины?</summary>
+        <p>Нет, всё видно только вам. Чтобы поиграть в армянскую команду вместе, поставьте мод всем друзьям.</p>
+      </details>
+      <details>
+        <summary>Можно ли предложить своего героя?</summary>
+        <p>Да! Пишите идеи имени, биографии и умений — лучшие попадут в следующую версию.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><b>Xa4lock</b> · xa4lock.com</p>
+    <p class="small">Неофициальный фанатский мод. Не связан с Valve Corporation и не одобрен ей. Deadlock и все связанные материалы являются собственностью Valve. Все персонажи мода вымышлены, любые совпадения с реальными людьми случайны.</p>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="heroes.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
