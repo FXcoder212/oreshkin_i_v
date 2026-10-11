@@ -24,7 +24,7 @@ import zipfile
 import zlib
 from pathlib import Path
 
-VERSION = "0.4"
+VERSION = "0.5"
 ROOT = Path(__file__).resolve().parent
 LOC_ROOT = "resource/localization"
 LANGS = {"english": "en", "russian": "ru"}  # язык игры -> поле в heroes.json
@@ -92,15 +92,54 @@ EXTRA_EN_FORMS = {"hero_orion": {"Talon": "Talonyan"}, "hero_ghost": {"Geist": "
                   "hero_krill": {"Krill": "Krikor"}}
 DESCRIPTIONS = json.loads((ROOT / "descriptions.json").read_text(encoding="utf-8"))
 ITEMS = json.loads((ROOT / "items.json").read_text(encoding="utf-8"))
+ITEM_DESCRIPTIONS = json.loads((ROOT / "item_descriptions.json").read_text(encoding="utf-8"))
 
 
-def renamer(forms):
-    """Функция замены оригинальных имён целыми словами (длинные формы первыми)."""
+def stem_pattern(name):
+    r"""«Ледяная дорожка» -> Ледян\w{0,3} дорожк\w{0,3}: ловит падежные формы."""
+    parts = re.split(r"(\W+)", name)
+    return "".join(re.escape(p[:-2] if len(p) > 4 else p[:-1] if len(p) > 3 else p)
+                   + r"\w{0,3}" if re.match(r"\w", p) else re.escape(p) for p in parts)
+
+
+def renamer(forms, quoted_stems=False):
+    """Функция замены оригинальных имён целыми словами (длинные формы первыми).
+    quoted_stems: ещё и любые падежные формы внутри «кавычек» (для русского)."""
     if not forms:
         return None
     rx = re.compile(r"(?<!\w)(" + "|".join(
         re.escape(f) for f in sorted(forms, key=len, reverse=True)) + r")(?!\w)")
-    return lambda raw: rx.sub(lambda m: esc(forms[m.group(1)]), raw)
+    quoted = [(re.compile("«" + stem_pattern(f) + "»"), f"«{n}»") for f, n in forms.items()] \
+        if quoted_stems else []
+
+    def run(raw):
+        for q, rep in quoted:
+            raw = q.sub(esc(rep), raw)
+        return rx.sub(lambda m: esc(forms[m.group(1)]), raw)
+    return run
+
+
+def token_owners(heroes, keys):
+    """Герой для каждой строки: чьё умение последним встречалось выше по файлу."""
+    prefixes = {}
+    for h in heroes:
+        prefixes[h["key"]] = h["key"]
+        for a in h["abilities"]:
+            prefixes[a["key"]] = h["key"]
+    owner, cur = {}, None
+    for tok in keys:
+        base = re.split(r"[/]", tok)[0]
+        for p in (base, re.sub(r"_(desc.*|t\d_desc|quip|lore|role|playstyle|\w+)$", "", base)):
+            if p in prefixes:
+                cur = prefixes[p]
+                break
+        else:
+            for p, hk in prefixes.items():
+                if base.startswith(p + "_"):
+                    cur = hk
+                    break
+        owner[tok] = cur
+    return owner
 
 
 def hero_tokens(heroes, field, lang_base):
@@ -129,6 +168,23 @@ def hero_tokens(heroes, field, lang_base):
         for a in h["abilities"]:
             add(a["key"], a[field], insert=True)
             add(f'{a["key"]}_quip', a[f"flavor_{field}"])
+    # Названия умений встречаются и в других строках того же героя: эффекты
+    # (бафы при нажатии), подсказки кнопок, подписи характеристик, улучшения.
+    # Заменяем их только в строках «своего» героя, чтобы общее слово вроде
+    # Grapple у одного героя не задело текст другого.
+    values = dict(re.findall(r'^\s*"([^"]+)"\s*"((?:[^"\\]|\\.)*)"', lang_base, re.M))
+    owner = token_owners(heroes, keys)
+    renames = {}
+    for h in heroes:
+        forms = {values[a["key"]]: a[field] for a in h["abilities"]
+                 if values.get(a["key"]) and values[a["key"]] != a[field]}
+        renames[h["key"]] = renamer(forms, quoted_stems=(field == "ru"))
+    for tok in keys:
+        rn = renames.get(owner.get(tok))
+        if not rn or isinstance(out.get(tok), str) or tok.endswith("_role"):
+            continue
+        prev = out.get(tok)
+        out[tok] = rn if prev is None else (lambda raw, p=prev, r=rn: r(p(raw)))
     # описания умений, переписанные целиком (механика и подстановки те же)
     for tok, texts in DESCRIPTIONS.items():
         add(tok, texts[field], insert=True)
@@ -143,6 +199,35 @@ def item_tokens(heroes, field, lang_base):
         if f'"{k}"' in lang_base:
             out[k] = name
             out[f"{k}_search"] = lambda raw, n=name: f"{esc(n)} {raw}"
+    return out
+
+
+def item_desc_tokens(heroes, field, lang_base):
+    """Описания предметов (новые — дописываются) и названия предметов в
+    остальных строках файла: эффекты, подписи. Одиночное слово меняем только
+    при полном совпадении строки, чтобы не задеть обычные слова в текстах."""
+    out = {tok: texts[field] for tok, texts in ITEM_DESCRIPTIONS.items()}
+    names = {it["key"]: it for it in ITEMS}
+    if field == "ru":
+        base_names = (ROOT / "vendor/citadel_gc_mod_names_russian.txt").read_text(encoding="utf-8-sig")
+        orig = dict(re.findall(r'^\s*"([^"]+)"\s*"((?:[^"\\]|\\.)*)"', base_names, re.M))
+    else:
+        orig = {k: it["orig"] for k, it in names.items()}
+    forms = {orig[k]: it[field] for k, it in names.items() if orig.get(k)}
+    # названия-характеристики (Spirit Lifesteal, Extra Health...) в текстах
+    # означают саму характеристику, а не предмет — их внутри текста не трогаем
+    stat = re.compile(r"(?i)lifesteal|resist|resilience|extra |shielding|booster|reducer|"
+                      r"вампиризм|сопротивл|дополнительн|усилитель|снижатель")
+    multi = {o: n for o, n in forms.items() if " " in o and not stat.search(o)}
+    rn = renamer(multi, quoted_stems=(field == "ru"))
+    for tok, val in re.findall(r'^\s*"([^"]+)"\s*"((?:[^"\\]|\\.)*)"', lang_base, re.M):
+        # подписи характеристик (Bullet Lifesteal и т.п.) — это не названия предметов
+        if tok in out or tok.endswith(("_label", "_prefix", "_postfix")):
+            continue
+        if val in forms:
+            out[tok] = forms[val]
+        elif rn and rn(val) != val:
+            out[tok] = rn
     return out
 
 
@@ -200,6 +285,7 @@ def main():
             ("citadel_gc_hero_names", name_tokens, True),
             ("citadel_heroes", hero_tokens, False),
             ("citadel_gc_mod_names", item_tokens, False),
+            ("citadel_mods", item_desc_tokens, False),
         ):
             text, src = base_file(stem, lang, args.game, fallback)
             if text is None:
@@ -225,7 +311,7 @@ def main():
     (dl / zpath.name).write_bytes(zpath.read_bytes())
     write_site_roster(heroes)
     n_ab = sum(len(h["abilities"]) for h in heroes)
-    print(f"{len(heroes)} героев, {n_ab} умений, {len(DESCRIPTIONS)} описаний, {len(ITEMS)} предметов"
+    print(f"{len(heroes)} героев, {n_ab} умений, {len(DESCRIPTIONS)} описаний, {len(ITEMS)} предметов ({len(ITEM_DESCRIPTIONS)} описаний)"
           f" -> {pak.relative_to(ROOT)}, {zpath.relative_to(ROOT)}")
 
 
