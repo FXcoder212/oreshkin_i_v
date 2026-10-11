@@ -24,7 +24,7 @@ import zipfile
 import zlib
 from pathlib import Path
 
-VERSION = "0.2"
+VERSION = "0.3"
 ROOT = Path(__file__).resolve().parent
 LOC_ROOT = "resource/localization"
 LANGS = {"english": "en", "russian": "ru"}  # язык игры -> поле в heroes.json
@@ -53,13 +53,17 @@ def esc(s):
 
 
 def patch(text, tokens):
-    """Заменяет значения токенов; отсутствующие дописывает в конец блока Tokens."""
-    missing = dict(tokens)
+    """Меняет значения токенов. Значение — строка (новый текст) или функция
+    от старого значения (в экранированном виде). Отсутствующие строковые
+    токены дописываются в конец блока Tokens."""
+    missing = {t: v for t, v in tokens.items() if isinstance(v, str)}
     for tok, val in tokens.items():
-        pat = re.compile(rf'^(\s*"{re.escape(tok)}"\s+)"(?:[^"\\]|\\.)*"', re.M)
-        text, n = pat.subn(lambda m: f'{m.group(1)}"{esc(val)}"', text)
+        pat = re.compile(rf'^(\s*"{re.escape(tok)}"\s+)"((?:[^"\\]|\\.)*)"', re.M)
+        new = (lambda m: f'{m.group(1)}"{esc(val)}"') if isinstance(val, str) else \
+              (lambda m, f=val: f'{m.group(1)}"{f(m.group(2))}"')
+        text, n = pat.subn(new, text)
         if n:
-            missing.pop(tok)
+            missing.pop(tok, None)
     if missing:
         extra = "".join(f'\t\t"{t}" "{esc(v)}"\n' for t, v in missing.items())
         # последняя "}" закрывает "lang", предпоследняя — "Tokens"
@@ -83,10 +87,54 @@ def name_tokens(heroes, field, lang_base):
             if not t.endswith("_sort:n") or f'"{t}"' in lang_base}
 
 
-def ability_tokens(heroes, field, lang_base):
-    # дописывать отсутствующие умения не нужно: если ключа нет, умение убрали из игры
-    return {a["key"]: a[field] for h in heroes for a in h["abilities"]
-            if f'"{a["key"]}"' in lang_base}
+# Части оригинальных имён, которые встречаются в текстах сами по себе
+EXTRA_EN_FORMS = {"hero_orion": {"Talon": "Talonyan"}, "hero_ghost": {"Geist": "Gayane"},
+                  "hero_krill": {"Krill": "Krikor"}}
+FLAVOR = '<span class="diminish">{}</span><br>'
+
+
+def renamer(forms):
+    """Функция замены оригинальных имён целыми словами (длинные формы первыми)."""
+    if not forms:
+        return None
+    rx = re.compile(r"(?<!\w)(" + "|".join(
+        re.escape(f) for f in sorted(forms, key=len, reverse=True)) + r")(?!\w)")
+    return lambda raw: rx.sub(lambda m: esc(forms[m.group(1)]), raw)
+
+
+def hero_tokens(heroes, field, lang_base):
+    """Биографии, названия и описания умений, имена в текстах о герое."""
+    known = (ROOT / "vendor/citadel_heroes_english.txt").read_text(encoding="utf-8-sig")
+    keys = re.findall(r'^\s*"([^"]+)"\s+"', lang_base, re.M)
+    out = {}
+
+    def add(tok, val, insert=False):
+        if f'"{tok}"' in lang_base or (insert and f'"{tok}"' in known):
+            out[tok] = val
+
+    for h in heroes:
+        k = h["key"]
+        bio = h["bio"] if field == "ru" else h["bio_en"]
+        add(f"{k}_lore", bio, insert=True)
+        forms = h.get("ru_forms") if field == "ru" else \
+            {h["orig"]: h["en"], **EXTRA_EN_FORMS.get(k, {})}
+        rename = renamer(forms)
+        abil = [a["key"] + "_" for a in h["abilities"]]
+        if rename:
+            for tok in keys:
+                if tok in (f"{k}_role", f"{k}_playstyle") or \
+                        (tok.startswith(tuple(abil)) and not tok.endswith("_quip")):
+                    out[tok] = rename
+        for a in h["abilities"]:
+            add(a["key"], a[field], insert=True)
+            flavor = a[f"flavor_{field}"]
+            if f'"{a["key"]}_quip"' in lang_base:
+                out[f'{a["key"]}_quip'] = flavor
+            elif f'"{a["key"]}_desc"' in lang_base:
+                prev = out.get(f'{a["key"]}_desc') or (lambda raw: raw)
+                out[f'{a["key"]}_desc'] = \
+                    lambda raw, p=prev, f=flavor: esc(FLAVOR.format(f)) + p(raw)
+    return out
 
 
 def write_vpk(path, files):
@@ -141,7 +189,7 @@ def main():
     for lang, field in LANGS.items():
         for stem, tokens_fn, fallback in (
             ("citadel_gc_hero_names", name_tokens, True),
-            ("citadel_heroes", ability_tokens, False),
+            ("citadel_heroes", hero_tokens, False),
         ):
             text, src = base_file(stem, lang, args.game, fallback)
             if text is None:
