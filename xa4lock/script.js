@@ -1,5 +1,5 @@
-// Ссылка на файл мода. Пока пусто — кнопка показывает «скоро».
-const DOWNLOAD_URL = "";
+// Ссылка на файл мода (собирается mod/build.py). Пусто — кнопка показывает «скоро».
+const DOWNLOAD_URL = "downloads/Xa4lock-0.1.zip";
 
 const grid = document.getElementById("grid");
 const filters = document.getElementById("filters");
