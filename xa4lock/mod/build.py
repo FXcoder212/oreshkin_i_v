@@ -24,7 +24,7 @@ import zipfile
 import zlib
 from pathlib import Path
 
-VERSION = "0.7"
+VERSION = "0.8"
 ROOT = Path(__file__).resolve().parent
 LOC_ROOT = "resource/localization"
 LANGS = {"english": "en", "russian": "ru"}  # язык игры -> поле в heroes.json
