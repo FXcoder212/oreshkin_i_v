@@ -167,5 +167,9 @@
   "ability_baba_bubbling_brew_desc": {"en": "Tatik unravels a sock, and you along with it. The thread pulls, your strength fades, the grandkids laugh.", "ru": "Татик распускает носок — и вас заодно. Нитка тянется, силы уходят, внуки смеются."},
   "ability_baba_bench_run_desc": {"en": "Grandma is chasing the bus. The bus won't leave. It wouldn't dare.", "ru": "Бабушка бежит за автобусом. Автобус не уйдёт. Не посмеет."},
   "ability_baba_hexing_brew_desc": {"en": "A brew for everything: heals some, hurts others, and teaches everyone how to live.", "ru": "Отвар от всего: кого-то вылечит, кого-то покалечит, а всех научит жить."},
-  "ability_baba_ultimate_2_desc": {"en": "Tatik has fed the pigeons on the square for thirty years. Today the pigeons repay the debt.", "ru": "Татик кормит голубей на площади тридцать лет. Сегодня голуби возвращают долг."}
+  "ability_baba_ultimate_2_desc": {"en": "Tatik has fed the pigeons on the square for thirty years. Today the pigeons repay the debt.", "ru": "Татик кормит голубей на площади тридцать лет. Сегодня голуби возвращают долг."},
+  "ability_deadpack_chargeblast_desc": {"en": "Danik lays out rockets in a row like goods on a stall. Come closer to look and you've bought one, whether you like it or not.", "ru": "Даник раскладывает ракеты рядком, как товар на прилавке. Подойдёте посмотреть — купите. Хотите вы того или нет."},
+  "ability_deadpack_rocketeer_desc": {"en": "A jetpack from the bazaar: flies great, overheats great. Landing is included in the price.", "ru": "Реактивный ранец с базара: летает отлично, перегревается тоже отлично. Приземление входит в стоимость."},
+  "ability_deadpack_flamethrower_desc": {"en": "Danik sells fuel at wholesale prices straight from the hose. Customers are happy until they catch fire.", "ru": "Даник продаёт бензин по оптовой цене прямо из шланга. Покупатели довольны, пока не загорятся."},
+  "ability_deadpack_ultimate_desc": {"en": "Danik grabs a customer for a hands-on product demo: takeoff, flight, landing. Deal closed.", "ru": "Даник хватает клиента и проводит наглядную демонстрацию товара: взлёт, полёт, приземление. Сделка закрыта."}
 }

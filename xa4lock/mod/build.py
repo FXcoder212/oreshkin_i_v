@@ -24,7 +24,7 @@ import zipfile
 import zlib
 from pathlib import Path
 
-VERSION = "0.8"
+VERSION = "0.9"
 ROOT = Path(__file__).resolve().parent
 LOC_ROOT = "resource/localization"
 LANGS = {"english": "en", "russian": "ru"}  # язык игры -> поле в heroes.json
@@ -88,8 +88,8 @@ def name_tokens(heroes, field, lang_base):
 
 
 # Части оригинальных имён, которые встречаются в текстах сами по себе
-EXTRA_EN_FORMS = {"hero_orion": {"Talon": "Talonyan"}, "hero_ghost": {"Geist": "Gayane"},
-                  "hero_krill": {"Krill": "Krikor"}}
+EXTRA_EN_FORMS = {"hero_orion": {"Talon": "Talonyan"}, "hero_ghost": {"Geist": "Geistyan"},
+                  "hero_krill": {"Krill": "Krikor"}, "hero_deadpack": {"Danny": "Danik"}}
 DESCRIPTIONS = json.loads((ROOT / "descriptions.json").read_text(encoding="utf-8"))
 ITEMS = json.loads((ROOT / "items.json").read_text(encoding="utf-8"))
 ITEM_DESCRIPTIONS = json.loads((ROOT / "item_descriptions.json").read_text(encoding="utf-8"))
@@ -159,7 +159,7 @@ def hero_tokens(heroes, field, lang_base):
         forms = h.get("ru_forms") if field == "ru" else \
             {h["orig"]: h["en"], **EXTRA_EN_FORMS.get(k, {})}
         rename = renamer(forms)
-        abil = [a["key"] + "_" for a in h["abilities"]]
+        abil = [a["key"] + sep for a in h["abilities"] for sep in ("_", "/")]
         if rename:
             for tok in keys:
                 if tok in (f"{k}_role", f"{k}_playstyle") or \

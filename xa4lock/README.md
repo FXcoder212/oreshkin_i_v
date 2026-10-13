@@ -6,7 +6,7 @@
 Статика без сборки: открыть `index.html`. `CNAME` — домен для GitHub Pages.
 Ростер (`heroes.js`) генерируется из `mod/heroes.json`, руками не править.
 
-## Мод (v0.8 — герои, умения, предметы)
+## Мод (v0.9 — герои, умения, предметы)
 - `mod/heroes.json` — ростер: ключ героя в игре → армянское имя (ru/en), роль, биография,
   четыре умения (ключ в игре, оригинал, ru/en); `soon` — герой ещё не вышел
 - `mod/descriptions.json` — описания умений (en/ru): шутки без механики и цифр
@@ -17,5 +17,5 @@
 - `mod/vendor/` — оригинальные файлы локализации из игры: английские из
   SteamDatabase/GameTracking-Deadlock, русские `citadel_heroes`, `citadel_gc_mod_names` и `citadel_mods` — из игры пользователя
 
-Результат: `mod/build/pak77_dir.vpk` (VPK v2) и `downloads/Xa4lock-0.8.zip` для сайта.
+Результат: `mod/build/pak77_dir.vpk` (VPK v2) и `downloads/Xa4lock-0.9.zip` для сайта.
 Инструкция по установке — `mod/INSTALL.txt`.
