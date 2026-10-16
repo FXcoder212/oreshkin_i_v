@@ -14,23 +14,25 @@
 #
 # **Как запускать в Colab.**
 # 1. Среда выполнения → Сменить среду → GPU (T4 хватает, A100/L4 быстрее).
-# 2. Данные скачиваются сами с Kaggle (публичный датасет, ключ не нужен, ≈ 4.4 ГБ).
-#    Если архив уже лежит на вашем Google Диске — укажите путь в `ZIP_ON_DRIVE`.
-# 3. Среда выполнения → Выполнить всё. Чекпойнты пишутся в `WORK_ON_DRIVE`
-#    каждые 1000 шагов; после отключения Colab просто запустите всё заново —
-#    обучение продолжится с последнего чекпойнта.
+# 2. Данные скачиваются сами напрямую с Kaggle в Colab (публичный датасет, ключ и
+#    Google Диск не нужны, ≈ 4.4 ГБ, обычно 2-5 минут).
+# 3. Среда выполнения → Выполнить всё. В конце `submission.parquet` скачается браузером.
+# 4. По желанию `USE_DRIVE = True`: чекпойнты и посылка пишутся на ваш Google Диск
+#    (`WORK_ON_DRIVE`), и после отключения Colab обучение продолжится с последнего
+#    чекпойнта. Без Диска всё лежит в `/content/sr_work` и пропадает при отключении.
 #
 # Время на T4: ≈ 3 часа на обучение, ≈ 10 минут на посылку.
 
 # %%
 import os
 import subprocess
+import time
 from pathlib import Path
 
 IN_COLAB = "COLAB_RELEASE_TAG" in os.environ or Path("/content").exists() and not os.environ.get("SR_DATA")
 
-ZIP_ON_DRIVE = "/content/drive/MyDrive/data.zip"   # необязательно: архив с данными на вашем Диске
-WORK_ON_DRIVE = "/content/drive/MyDrive/sr_work"   # сюда пишутся чекпойнты и посылка
+USE_DRIVE = False                                  # True — хранить чекпойнты и посылку на Google Диске
+WORK_ON_DRIVE = "/content/drive/MyDrive/sr_work"   # куда писать, если USE_DRIVE = True
 KAGGLE_URL = "https://www.kaggle.com/api/v1/datasets/download/d1ffic00lt/russian-olympiad-in-ai-2026-task-a"
 GDRIVE_FILE_ID = "1LCBvwkXYDp_F-d_EZKR4ZDijsWzYJ2jT"  # запасной вариант (бывает упирается в квоту Google)
 
@@ -42,19 +44,23 @@ os.environ.setdefault("SR_STEPS_METRIC", "")        # пусто = по умол
 os.environ.setdefault("SR_EVAL_EVERY", "")          # пусто = по умолчанию (5000)
 
 if IN_COLAB:
-    from google.colab import drive
+    if USE_DRIVE:
+        from google.colab import drive
 
-    drive.mount("/content/drive")
-    os.environ.setdefault("SR_OUT", WORK_ON_DRIVE)
+        drive.mount("/content/drive")
+        os.environ.setdefault("SR_OUT", WORK_ON_DRIVE)
+    else:
+        os.environ.setdefault("SR_OUT", "/content/sr_work")
     local_zip = Path("/content/data.zip")
     if not any(Path("/content/data_unpacked").rglob("lr")):
-        if Path(ZIP_ON_DRIVE).exists():
-            print("копирую архив с Диска…")
-            subprocess.run(["cp", ZIP_ON_DRIVE, str(local_zip)], check=True)
-        elif subprocess.run(["curl", "-sSLf", "-o", str(local_zip), KAGGLE_URL]).returncode != 0:
-            print("Kaggle не отдал архив, пробую Google Диск…")
+        started = time.time()
+        print("скачиваю датасет с Kaggle (≈ 4.4 ГБ)…", flush=True)
+        if subprocess.run(["curl", "-sSLf", "--retry", "5", "-o", str(local_zip), KAGGLE_URL]).returncode != 0:
+            print("Kaggle не отдал архив, пробую Google Диск…", flush=True)
             subprocess.run(["pip", "install", "-q", "gdown"], check=True)
             subprocess.run(["gdown", GDRIVE_FILE_ID, "-O", str(local_zip)], check=True)
+        print(f"скачано {local_zip.stat().st_size / 1e9:.2f} ГБ за {time.time() - started:.0f} с, распаковываю…",
+              flush=True)
         subprocess.run(["unzip", "-q", "-o", str(local_zip), "-d", "/content/data_unpacked"], check=True)
         local_zip.unlink()
     # папка, внутри которой лежат train/ val/ test/
@@ -632,3 +638,8 @@ for payload in check.column("image").to_pylist():
     assert restored.std() > 1.0, "вырожденное предсказание"
 assert np.array_equal(decode(check.column("image")[0].as_py()), first)
 print(f"{submission}: {check.num_rows} строк, {size} байт — посылка готова")
+
+if IN_COLAB and not USE_DRIVE:
+    from google.colab import files
+
+    files.download(str(submission))  # без Диска файл живёт только до отключения Colab
