@@ -142,7 +142,7 @@ class Test2:
                 p = self.sm.predict(self._mat(row, SFH, dyn, n), num_threads=1)
                 ok = (rng.random(n) < p) & act
                 fail = act & ~ok
-                score += ok * VAL[row.action[0]]
+                score += ok * VAL[row.action[0]] * (rests <= MAXREST if getattr(self, 'trunc', False) else 1)
                 rests += isf
                 res = np.where(fail, 0.0, 1.0)
                 dTo = self.tm.predict(self._mat(row, TFH, {**dyn, 'result': res}, n), num_threads=1)
