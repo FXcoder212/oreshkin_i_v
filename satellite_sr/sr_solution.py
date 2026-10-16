@@ -34,6 +34,13 @@ WORK_ON_DRIVE = "/content/drive/MyDrive/sr_work"   # сюда пишутся ч�
 KAGGLE_URL = "https://www.kaggle.com/api/v1/datasets/download/d1ffic00lt/russian-olympiad-in-ai-2026-task-a"
 GDRIVE_FILE_ID = "1LCBvwkXYDp_F-d_EZKR4ZDijsWzYJ2jT"  # запасной вариант (бывает упирается в квоту Google)
 
+# Бюджет времени. Обучение остановится по лимиту минут (если задан), сохранит EMA-модель
+# и ноутбук сразу перейдёт к выбору настроек и посылке (после обучения ещё ≈ 15-20 мин).
+os.environ.setdefault("SR_TIME_LIMIT_MIN", "")      # например "90"; пусто = без лимита
+os.environ.setdefault("SR_STEPS_L1", "")            # пусто = по умолчанию (70000)
+os.environ.setdefault("SR_STEPS_METRIC", "")        # пусто = по умолчанию (30000)
+os.environ.setdefault("SR_EVAL_EVERY", "")          # пусто = по умолчанию (5000)
+
 if IN_COLAB:
     from google.colab import drive
 
@@ -485,6 +492,8 @@ def save_state(path, step, phase_index, opt, sched, scaler):
 
 
 def train():
+    limit = float(os.environ.get("SR_TIME_LIMIT_MIN") or 0)
+    deadline = time.time() + limit * 60 if limit > 0 else float("inf")
     ensure_train_data()
     state_path = OUT / "train_state.pt"
     metric_loss = MetricLoss().to(DEVICE)
@@ -525,14 +534,20 @@ def train():
                     e.lerp_(p, 1 - CFG["ema"])
             step += 1
             running, count = running + loss.item(), count + 1
-            if step % CFG["save_every"] == 0 or step == offsets[index + 1]:
+            out_of_time = time.time() > deadline
+            if step % CFG["save_every"] == 0 or step == offsets[index + 1] or out_of_time:
                 save_state(state_path, step, index, opt, sched, scaler)
+            if out_of_time:
+                print(f"лимит времени: останавливаюсь на шаге {step}/{offsets[-1]}", flush=True)
+                break
             if step % CFG["eval_every"] == 0 or step == offsets[index + 1]:
                 score = evaluate(ema_model, eval_ids)
                 speed = count / (time.time() - started)
                 print(f"[{phase['name']}] шаг {step}/{offsets[-1]}  потеря {running / count:.5f}  "
                       f"Score(EMA, {len(eval_ids)} сцен) {score:.3f}  {speed:.1f} шаг/с", flush=True)
                 started, running, count = time.time(), 0.0, 0
+        if time.time() > deadline:
+            break
     torch.save(ema_model.state_dict(), OUT / "model.pt")
 
 
