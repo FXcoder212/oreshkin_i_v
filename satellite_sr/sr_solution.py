@@ -79,7 +79,7 @@ AMP = DEVICE.type == "cuda"
 torch.backends.cudnn.benchmark = True
 
 PRESETS = {
-    # полноразмерная модель для Colab GPU (~9 M параметров)
+    # полноразмерная модель для Colab GPU (~7.3 M параметров)
     "full": dict(feats=96, groups=6, blocks=6, patch=48, batch=16, steps_l1=70_000,
                  steps_metric=30_000, patch_metric=64, lr=2e-4, eval_every=5_000, eval_scenes=30,
                  final_eval_scenes=120),
