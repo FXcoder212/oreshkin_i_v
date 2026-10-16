@@ -71,7 +71,7 @@ class Test2:
             X[:, j] = dyn[c] if c in dyn else row[c]
         return X
 
-    def simulate(self, plan, n=500, seed=0, return_all=False):
+    def simulate(self, plan, n=500, seed=0, return_all=False, last=LAST):
         rng = np.random.default_rng(seed)
         c = self.ctx
         # history state from context (steps 8,9,10)
@@ -125,7 +125,7 @@ class Test2:
         forced = np.full(n, self.forced0)
         rests = np.zeros(n, int)
         score = np.zeros(n)
-        for st in range(FIRST, LAST + 1):
+        for st in range(FIRST, last + 1):
             a = plan[st]
             isf = forced > 0
             dyn = dyn_hist()
