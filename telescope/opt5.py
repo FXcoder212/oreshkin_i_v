@@ -26,8 +26,39 @@ def greedy(seed=5):
     return plan
 
 
-starts = {'greedy': greedy()}
-for f in [f'plan2_{tid}.pkl', f'plan4_{tid}.pkl']:
+from sim2 import SFH
+z = np.zeros(1)
+
+
+def pcool(st, i):
+    row = t.static[(st, i)]
+    dyn = {'temperature': z + 24, 'dT_amb': z + 24 - row.ambient_temperature, 'obs_l1': z, 'obs_l2': z, 'obs_l3': z,
+           'cls_l1': z + 3, 'cls_l2': z + 3, 'cls_l3': z + 3, 'dT_l1': z, 'dT_l2': z, 'obs_last5': z,
+           'streak_prev': z, 'mag_l1': z + np.nan}
+    return t.sm.predict(t._mat(row, SFH, dyn, 1))[0]
+
+
+def a_first(fill, thr):
+    plan, nrest = {}, 0
+    for st in range(FIRST, LAST + 1):
+        o = t.opts[st]
+        ps = [pcool(st, i) for i in range(len(o))]
+        A = [(ps[i], i) for i, x in enumerate(o) if x[1][0] == 'A']
+        if A and max(A)[0] > thr:
+            plan[st] = max(A)[1]
+        elif fill == 'REST' and nrest < 45:
+            plan[st] = -1
+            nrest += 1
+        else:
+            ev = [(ps[i] * x[2], i) for i, x in enumerate(o)]
+            plan[st] = max(ev)[1] if ev else -1
+    return plan
+
+
+starts = {f'A_{f}_{th}': a_first(f, th) for f in ('REST', 'EV') for th in (0.2, 0.3, 0.4)}
+if len(sys.argv) > 2:
+    starts['greedy'] = greedy()
+for f in [f'plan2_{tid}.pkl', f'plan4_{tid}.pkl', f'plan5_{tid}.pkl']:
     try:
         starts[f] = pickle.load(open(f, 'rb'))
     except FileNotFoundError:
