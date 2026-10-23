@@ -12,6 +12,7 @@ import base64
 import io
 import json
 import re
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -82,6 +83,7 @@ class PosterAgent:
     effort: str = "medium"
     log: Callable[[str], None] = print
     on_poster: Callable[[PosterResult], None] | None = None
+    stop_event: threading.Event = field(default_factory=threading.Event)
     results: list[PosterResult] = field(default_factory=list)
 
     def __post_init__(self):
@@ -112,6 +114,8 @@ class PosterAgent:
         return [create_poster]
 
     def _create_poster(self, event_id: str, title: str, prompt: str):
+        if self.stop_event.is_set():
+            raise ToolError("Пользователь остановил работу. Больше ничего не генерируй, коротко подведи итог.")
         slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", event_id).strip("-")[:60] or "event"
         attempt = self._attempts.get(slug, 0) + 1
         if attempt > MAX_ATTEMPTS_PER_EVENT:
@@ -189,6 +193,9 @@ class PosterAgent:
 
         final_text = ""
         for message in runner:
+            if self.stop_event.is_set():
+                self.log("Остановлено пользователем.")
+                break
             if message.stop_reason == "refusal":
                 raise RuntimeError("Модель отказалась выполнять запрос")
             text = "".join(b.text for b in message.content if b.type == "text").strip()

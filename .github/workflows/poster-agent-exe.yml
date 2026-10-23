@@ -1,0 +1,59 @@
+name: poster-agent exe
+
+on:
+  push:
+    paths:
+      - "poster_agent/**"
+      - ".github/workflows/poster-agent-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: poster_agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r packaging/requirements-build.txt
+
+      - name: Build PosterAgent.exe
+        run: |
+          python packaging/make_icon.py
+          pyinstaller --noconfirm --clean packaging/PosterAgent.spec
+
+      - name: Smoke test (CLI help + GUI start)
+        shell: pwsh
+        run: |
+          $p = Start-Process dist/PosterAgent.exe -ArgumentList "--help" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "--help exited with $($p.ExitCode)" }
+          $g = Start-Process dist/PosterAgent.exe -PassThru
+          Start-Sleep -Seconds 15
+          if ($g.HasExited) { throw "GUI exited early with code $($g.ExitCode)" }
+          Stop-Process -Id $g.Id
+          Get-Item dist/PosterAgent.exe | Format-List Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PosterAgent-windows
+          path: poster_agent/dist/PosterAgent.exe
+
+      - name: Publish to release "poster-agent-latest"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete poster-agent-latest --cleanup-tag --yes || true
+          gh release create poster-agent-latest dist/PosterAgent.exe \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "PosterAgent (Windows) — последняя сборка" \
+            --notes "Сборка из ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Скачайте PosterAgent.exe и запустите двойным кликом."
