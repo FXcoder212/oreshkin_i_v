@@ -57,7 +57,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete poster-agent-latest --cleanup-tag --yes || true
-          gh release create poster-agent-latest dist/PosterAgent.exe \
+          gh release create poster-agent-latest dist/PosterAgent.exe dist/PosterAgent.zip \
             --target "$GITHUB_SHA" --prerelease \
             --title "PosterAgent (Windows) — последняя сборка" \
             --notes "Сборка из ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Скачайте PosterAgent.zip (или PosterAgent.exe), распакуйте и запустите двойным кликом."
