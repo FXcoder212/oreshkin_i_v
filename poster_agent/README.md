@@ -24,7 +24,7 @@
 
 ## Быстрый старт (Windows, без Python)
 
-1. Скачайте **PosterAgent.exe** из релиза
+1. Скачайте **PosterAgent.zip** (или PosterAgent.exe) из релиза
    [poster-agent-latest](https://github.com/FXcoder212/oreshkin_i_v/releases/tag/poster-agent-latest).
    Он же лежит в артефактах сборки *poster-agent exe* на вкладке Actions.
 2. Запустите двойным кликом. Windows может показать «Windows защитила ваш компьютер»,

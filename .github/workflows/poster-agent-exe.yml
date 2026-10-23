@@ -42,6 +42,10 @@ jobs:
           Stop-Process -Id $g.Id
           Get-Item dist/PosterAgent.exe | Format-List Name, Length
 
+      - name: Zip exe
+        shell: pwsh
+        run: Compress-Archive -Path dist/PosterAgent.exe -DestinationPath dist/PosterAgent.zip -Force
+
       - uses: actions/upload-artifact@v4
         with:
           name: PosterAgent-windows
@@ -56,4 +60,4 @@ jobs:
           gh release create poster-agent-latest dist/PosterAgent.exe \
             --target "$GITHUB_SHA" --prerelease \
             --title "PosterAgent (Windows) — последняя сборка" \
-            --notes "Сборка из ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Скачайте PosterAgent.exe и запустите двойным кликом."
+            --notes "Сборка из ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Скачайте PosterAgent.zip (или PosterAgent.exe), распакуйте и запустите двойным кликом."
